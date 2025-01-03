@@ -1,4 +1,4 @@
-# chesschapaa
+# ChessApp
 
 A new Flutter project.
 

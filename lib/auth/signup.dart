@@ -1,15 +1,23 @@
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:chesschapaa/widgets/main_button.dart';
+import 'package:ChessApp/auth/verify_email.dart';
+import 'package:ChessApp/widgets/main_button.dart';
 import 'package:country_picker/country_picker.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 
+import '../api/api_service.dart';
 import '../main.dart';
+import '../model/users.dart';
 import '../utils/colors.dart';
 import '../widgets/text/emailTextFormWidget.dart';
 import '../widgets/text/text_filed_input.dart';
+import 'camera.dart';
 import 'login.dart';
 
 class Signup extends StatefulWidget {
@@ -33,6 +41,10 @@ class _SignupState extends State<Signup> {
   final _key = GlobalKey<FormState>();
 
   File? _image;
+
+  var pickedImage;
+
+  final picker = ImagePicker();
 
   String _imageUrl = '';
 
@@ -121,7 +133,7 @@ class _SignupState extends State<Signup> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 40,),
+                          SizedBox(height: 20,),
                           Row(
                             children: [
                               Icon(CupertinoIcons.person_fill ,size: 26),SizedBox(width: 10,),
@@ -150,7 +162,7 @@ class _SignupState extends State<Signup> {
                                     left: 65,
                                     child: IconButton(
                                       onPressed: () {
-                                        // dialogPickProfile(context);
+                                        dialogPickProfile(context);
                                       },
                                       icon: const Icon(Icons.add_a_photo, color: Colors.blueAccent,),
                                     ),
@@ -314,23 +326,41 @@ class _SignupState extends State<Signup> {
                             },
                           ),
                           SizedBox(height: 10,),
-                          MainButton(
-                              title: "Create Account",
-                              onTap: (){
-                                final form = _key.currentState!;
-                                if(form.validate()) {
-                                  if(_isLoading){
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text("Please wait!", style: TextStyle(color: revers),),
-                                          behavior: SnackBarBehavior.floating,
-                                        )
-                                    );
-                                  } else {
-                                    // _verifyEmail();
-                                  }
+                          InkWell(
+                            onTap: (){
+                              final form = _key.currentState!;
+                              if(form.validate()) {
+                                if(_isLoading){
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Please wait!", style: TextStyle(color: revers),),
+                                        behavior: SnackBarBehavior.floating,
+                                      )
+                                  );
+                                } else {
+                                  _verifyEmail();
                                 }
                               }
+                            },
+                            borderRadius: BorderRadius.circular(5),
+                            splashColor: CupertinoColors.activeBlue,
+                            hoverColor: CupertinoColors.systemBlue,
+                            child: Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(vertical: 15),
+                              decoration: BoxDecoration(
+                                  color: CupertinoColors.activeBlue,
+                                  borderRadius: BorderRadius.circular(5)
+                              ),
+                              child: Center(
+                                child: _isLoading
+                                    ? SizedBox(width: 20, height: 20,child: CircularProgressIndicator(color: Colors.black,strokeWidth: 2,),)
+                                    : Text(
+                                      "Create Account",
+                                      style: TextStyle(color: normal, fontWeight: FontWeight.w600),
+                                    ),
+                              ),
+                            ),
                           ),
                           SizedBox(height: 10,),
                           RichText(
@@ -515,6 +545,51 @@ class _SignupState extends State<Signup> {
       ),
     );
   }
+  void  _verifyEmail()async{
+    final revers = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+    final dilogbg = Theme.of(context).brightness ==  Brightness.dark
+        ? Colors.grey[900]
+        : Colors.white;
+    const uuid = Uuid();
+    String id = uuid.v1();
+    setState(() {
+      _isLoading = true;
+    });
+    UserModel userModel = UserModel(
+      uid: id,
+      username: _username.text.trim().toString(),
+      firstname: _first.text.trim().toString(),
+      lastname: _second.text.trim().toString(),
+      email: _email.text.trim().toString(),
+      phone: "+"+ _country.phoneCode+_phone.text.trim().toString(),
+      password:  md5.convert(utf8.encode(_pass.text.trim().toString())).toString(),
+      image: _image!=null?_image!.path:_imageUrl,
+      status: "",
+      token: deviceModel.token.toString(),
+      time: DateTime.now().toString(),
+      country: _country.countryCode,
+    );
+    APIService.otpLogin(_email.text.trim()).then((response)async{
+      print(response.data);
+      setState(() {
+        _isLoading = false;
+      });
+      if(response.data != null){
+        Get.to(()=>VerifyEmail(otpHash: response.data.toString(), userModel: userModel,), transition: Transition.rightToLeft);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("mhmm🤔 seems like something went wrong please try again", style: TextStyle(color: revers)),
+              backgroundColor: dilogbg,
+              behavior: SnackBarBehavior.floating,
+            )
+        );
+      }
+    });
+  }
+
   void _showPicker(){
     final color1 = Theme.of(context).brightness == Brightness.dark
         ? Colors.white10
@@ -555,5 +630,65 @@ class _SignupState extends State<Signup> {
             this._country = country;
           });
         });
+  }
+  void dialogPickProfile(BuildContext context){
+    final dilogbg = Theme.of(context).brightness == Brightness.dark
+        ? Colors.grey[900]
+        : Colors.white;
+    final color1 = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white10
+        : Colors.black12;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return SimpleDialog(
+          title: Text('Choose an option'),
+          children: [
+            SimpleDialogOption(
+              onPressed: (){
+                Navigator.pop(context);
+                choiceImage();
+              },
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.photo),
+                  SizedBox(width: 10,),
+                  Text("Gallery")
+                ],
+              ),
+            ),
+            Platform.isIOS || Platform.isAndroid ?  SimpleDialogOption(
+              onPressed: (){
+                Navigator.pop(context);
+                Get.to(()=>CameraScreen(setPicture: _setPicture,), transition: Transition.downToUp);
+              },
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.camera),
+                  SizedBox(width: 10,),
+                  Text("Camera")
+                ],
+              ),
+            ) : SizedBox(),
+          ],
+        );
+      },
+    );
+  }
+  Future choiceImage() async {
+    setState(() {
+      _loading = true;
+    });
+    pickedImage = await picker.pickImage(source: ImageSource.gallery);
+    setState(() {
+      _imageUrl = '';
+      _image = File(pickedImage!.path);
+      _loading = false;
+    });
+  }
+  _setPicture(File? image){
+    setState(() {
+      _image = image;
+    });
   }
 }

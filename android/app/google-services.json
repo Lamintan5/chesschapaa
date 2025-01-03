@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "26629939095",
+    "project_id": "ChessApp-b6a59",
+    "storage_bucket": "ChessApp-b6a59.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:26629939095:android:6f8895834d2987a83faed2",
+        "android_client_info": {
+          "package_name": "com.studio5ive.chessapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAES3NdU8N25zEznmpl2mHGXC6OFkgmSjE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

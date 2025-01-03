@@ -1,22 +1,96 @@
-import 'package:chesschapaa/auth/login.dart';
-import 'package:chesschapaa/utils/colors.dart';
+import 'dart:io';
+
+import 'package:camera/camera.dart';
+import 'package:ChessApp/auth/fetching_data.dart';
+import 'package:ChessApp/auth/login.dart';
+import 'package:ChessApp/utils/colors.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'home/home_screen.dart';
+import 'home/web_home.dart';
 import 'model/device.dart';
+import 'model/users.dart';
+
+late List<CameraDescription> cameras;
 
 DeviceModel deviceModel = DeviceModel();
+UserModel currentUser = UserModel(uid: "");
 
-void main() {
+String domain = "192.168.1.141";
+
+final customCacheManager = CacheManager(
+    Config(
+      'customCacheManager',
+      maxNrOfCacheObjects: 200,
+    )
+);
+
+Future<void> main()async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if(Platform.isAndroid || Platform.isIOS){
+    cameras = await availableCameras();
+  }
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+
+  bool _loading = false;
+
+
+  Future<void>getValidations()async{
+    setState(() {
+      _loading = true;
+    });
+    final SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var obtainId = sharedPreferences.getString('uid');
+    var obtainUsername = sharedPreferences.getString('username');
+    var obtainFirst = sharedPreferences.getString('first');
+    var obtainLast= sharedPreferences.getString('last');
+    var obtainImage = sharedPreferences.getString('image');
+    var obtainPhone = sharedPreferences.getString('phone');
+    var obtainEmail = sharedPreferences.getString('email');;
+    var obtainStatus = sharedPreferences.getString('status');
+    var obtainToken = sharedPreferences.getString('token');
+    var obtainPass = sharedPreferences.getString('password');
+    var obtainCountry = sharedPreferences.getString('country');
+
+    setState(() {
+      currentUser = UserModel(
+          uid: obtainId == null || obtainId == ""? "": obtainId,
+          firstname: obtainFirst == null || obtainFirst == ""? "":obtainFirst,
+          lastname: obtainLast == null || obtainLast == ""? "":obtainLast,
+          username: obtainUsername == null || obtainUsername == ""? "":obtainUsername,
+          email: obtainEmail == null || obtainEmail == ""? "":obtainEmail,
+          phone: obtainPhone == null || obtainPhone == ""? "":obtainPhone,
+          image: obtainImage == null || obtainImage == ""? "":obtainImage,
+          password: obtainPass == null || obtainPass == ""? "":obtainPass,
+          status: obtainStatus == null || obtainStatus == ""? "":obtainStatus,
+          token: obtainToken == null || obtainToken == ""? "":obtainToken,
+          country: obtainCountry == null || obtainCountry == ""? "":obtainCountry
+      );
+      _loading = false;
+    });
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    getValidations();
+  }
+
   @override
   Widget build(BuildContext context) {
     final dialogBgColor = Theme.of(context).brightness == Brightness.dark
@@ -24,7 +98,7 @@ class MyApp extends StatelessWidget {
         : Colors.grey[900];
     final size = MediaQuery.of(context).size;
     return GetMaterialApp(
-      title: "ChessChapaa",
+      title: "ChessApp",
       debugShowCheckedModeBanner: false,
       theme: ThemeData.light(useMaterial3: true,).copyWith(
           dialogBackgroundColor: Colors.white,
@@ -112,7 +186,13 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: Login(),
+      home: _loading
+          ? FetchingData()
+          : currentUser.uid.isEmpty || currentUser.uid=="" || currentUser.uid==null
+          ? Login()
+          : Platform.isAndroid || Platform.isIOS
+          ? HomeScreen()
+          : WebHome(),
     );
   }
 }
